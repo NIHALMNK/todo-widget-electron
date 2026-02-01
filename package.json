@@ -1,0 +1,14 @@
+{
+  "name": "todo-widget",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2"
+  },
+  "devDependencies": {
+    "electron": "^40.1.0"
+  }
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+todo.db
+TodoWidgetData/
+*.log
+.DS_Store
