@@ -1,7 +1,15 @@
-const Database = require("better-sqlite3");
+const { app } = require("electron");
 const path = require("path");
+const fs = require("fs");
+const Database = require("better-sqlite3");
 
-const db = new Database(path.join(__dirname, "todo.db"));
+const userData = app.getPath("userData");
+if (!fs.existsSync(userData)) {
+  fs.mkdirSync(userData, { recursive: true });
+}
+
+const dbPath = path.join(userData, "todo.db");
+const db = new Database(dbPath);
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS tasks (

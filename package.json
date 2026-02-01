@@ -1,14 +1,55 @@
 {
   "name": "todo-widget",
   "version": "1.0.0",
+  "description": "Minimal daily todo widget",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "set ELECTRON_ENABLE_LOGGING=false && electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-builder"
   },
   "dependencies": {
     "better-sqlite3": "^12.6.2"
   },
   "devDependencies": {
-    "electron": "^40.1.0"
+    "electron": "^40.1.0",
+    "electron-builder": "^26.7.0"
+  },
+  "build": {
+  "appId": "com.todo.widget",
+  "productName": "TodoWidget",
+
+  "asar": true,
+  "asarUnpack": [
+    "**/node_modules/better-sqlite3/**"
+  ],
+
+  "directories": {
+    "output": "dist"
+  },
+
+  "files": [
+    "**/*",
+    "node_modules/better-sqlite3/**",
+    "node_modules/bindings/**",
+    "node_modules/file-uri-to-path/**",
+    "!node_modules/**/test/**",
+    "!node_modules/**/tests/**",
+    "!node_modules/**/example/**",
+    "!node_modules/**/examples/**",
+    "!todo.db",
+    "!TodoWidgetData/**/*"
+  ],
+
+  "win": {
+    "target": "nsis",
+    "icon": "icon.ico"
+  },
+
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
   }
+}
+
 }

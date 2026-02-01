@@ -2,15 +2,20 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
   <title>Todo Widget</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="widget">
+
     <div id="header">
-      <span id="date"></span>
-      <span class="drag">⇕ drag</span>
+      <span id="date" class="clickable-date"></span>
+      <span class="drag-hint">⇕ drag</span>
     </div>
+
+    <div id="calendar" class="hidden"></div>
 
     <ul id="taskList"></ul>
 
@@ -18,9 +23,10 @@
     <div id="streak"></div>
 
     <div id="export">
-      <button id="exportCsv">Export CSV</button>
       <button id="exportJson">Export JSON</button>
+      <button id="exportCsv">Export CSV</button>
     </div>
+
   </div>
 
   <script src="script.js"></script>

@@ -1,143 +1,168 @@
-window.addEventListener("DOMContentLoaded", () => {
-  const db = require("./db");
-  const fs = require("fs");
-  const path = require("path");
-  const { exec } = require("child_process");
+window.addEventListener("DOMContentLoaded", async () => {
 
-  /* ---------- EXPORT DIR ---------- */
-  const EXPORT_DIR = path.join(
-    process.env.USERPROFILE,
-    "Documents",
-    "TodoWidgetData"
-  );
-
-  if (!fs.existsSync(EXPORT_DIR)) {
-    fs.mkdirSync(EXPORT_DIR, { recursive: true });
+  /* ---------- helpers ---------- */
+  function formatDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   }
 
-  /* ---------- DATE ---------- */
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById("date").innerText = today;
-
-  /* ---------- DEFAULT TASKS (FORCE SAFE) ---------- */
-  const DEFAULT_TASKS = [
-  "Wake up at 5:30 AM",
-  "Morning walk",
-  "Deep work (most important task)",
-  "Reading (20 minutes)",
-  "Skill practice (coding / learning)",
-  "Exercise (strength or cardio)",
-  "Prayer (5 times)",
-  "Plan tomorrow",
-  "Sleep on time"
-];
-
-  const existing = db.prepare("SELECT COUNT(*) c FROM tasks").get().c;
-  if (existing === 0) {
-    const insert = db.prepare("INSERT INTO tasks (name) VALUES (?)");
-    DEFAULT_TASKS.forEach(t => insert.run(t));
+  function addDays(dateStr, days) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    return formatDate(d);
   }
 
-  /* ---------- LOAD TASKS ---------- */
-  function loadTasks() {
-    const tasks = db.prepare(`
-      SELECT t.id, t.name, IFNULL(d.done,0) done
-      FROM tasks t
-      LEFT JOIN daily_tasks d
-        ON t.id=d.task_id AND d.date=?
-      WHERE t.active=1
-    `).all(today);
+  /* ---------- state ---------- */
+  const TODAY = formatDate(new Date());
+  let currentDate = TODAY;
+  let lastKnownDate = TODAY;
 
-    const list = document.getElementById("taskList");
-    list.innerHTML = "";
+  /* ---------- elements ---------- */
+  const dateEl = document.getElementById("date");
+  const taskList = document.getElementById("taskList");
+  const statsEl = document.getElementById("stats");
+  const streakEl = document.getElementById("streak");
+  const calendarEl = document.getElementById("calendar");
+  const exportJsonBtn = document.getElementById("exportJson");
+  const exportCsvBtn = document.getElementById("exportCsv");
 
-    tasks.forEach(task => {
+  dateEl.innerText = TODAY;
+
+  await window.api.initDefaults();
+
+  /* ---------- load tasks ---------- */
+  async function load(date) {
+    const tasks = await window.api.getTasks(date);
+    taskList.innerHTML = "";
+
+    tasks.forEach(t => {
       const li = document.createElement("li");
       const cb = document.createElement("input");
       const sp = document.createElement("span");
 
       cb.type = "checkbox";
-      cb.checked = task.done === 1;
-      sp.innerText = task.name;
+      cb.checked = t.done === 1;
+      cb.disabled = date !== TODAY;
+      sp.innerText = t.name;
 
-      cb.onchange = () => {
-        db.prepare(`
-          INSERT INTO daily_tasks (task_id,date,done)
-          VALUES (?,?,?)
-          ON CONFLICT(task_id,date)
-          DO UPDATE SET done=excluded.done
-        `).run(task.id, today, cb.checked ? 1 : 0);
+      cb.onchange = async () => {
+        await window.api.setDone({
+          taskId: t.id,
+          date,
+          done: cb.checked
+        });
+
+        // 🔥 AUTO-SAVE ON EVERY CHANGE
+        const updatedTasks = await window.api.getTasks(date);
+        await window.api.exportJson({ date, tasks: updatedTasks });
+        await window.api.exportCsv({ date, tasks: updatedTasks });
 
         renderStats();
-        renderStreak();
+        renderStreaks();
       };
 
       li.append(cb, sp);
-      list.appendChild(li);
+      taskList.appendChild(li);
     });
-
-    renderStats();
-    renderStreak();
   }
 
-  /* ---------- STATS ---------- */
-  function renderStats() {
-    const r = db.prepare(`
-      SELECT COUNT(*) total, SUM(done) completed
-      FROM daily_tasks
-    `).get();
-
-    document.getElementById("stats").innerText =
-      `All time: ${r.completed || 0}/${r.total || 0}`;
+  /* ---------- stats ---------- */
+  async function renderStats() {
+    const r = await window.api.getStats();
+    const percent = r.total ? Math.round((r.completed / r.total) * 100) : 0;
+    statsEl.innerText = `All time: ${r.completed}/${r.total} (${percent}%)`;
   }
 
-  /* ---------- STREAK ---------- */
-  function renderStreak() {
-    const days = db.prepare(`
-      SELECT date FROM daily_tasks
-      GROUP BY date
-      HAVING SUM(done)=COUNT(*)
-      ORDER BY date
-    `).all().map(r => r.date);
+  async function renderStreaks() {
+    const rows = await window.api.getStreaks();
+    streakEl.innerText = `🔥 days completed: ${rows.length}`;
+  }
 
-    let best = 0, temp = 0;
-    for (let i = 0; i < days.length; i++) {
-      if (i === 0 || new Date(days[i]) - new Date(days[i-1]) !== 86400000)
-        temp = 1;
-      else temp++;
-      best = Math.max(best, temp);
+  /* ---------- auto day change ---------- */
+  setInterval(async () => {
+    const now = formatDate(new Date());
+    if (now !== lastKnownDate) {
+      const yesterday = lastKnownDate;
+      const tasks = await window.api.getTasks(yesterday);
+
+      await window.api.exportJson({ date: yesterday, tasks });
+      await window.api.exportCsv({ date: yesterday, tasks });
+
+      lastKnownDate = now;
+      currentDate = now;
+      dateEl.innerText = now;
+      load(now);
+    }
+  }, 60 * 1000);
+
+  /* ---------- calendar ---------- */
+  function renderCalendar(baseDate) {
+    calendarEl.innerHTML = "";
+
+    const d = new Date(baseDate);
+    d.setDate(1);
+
+    const month = d.getMonth();
+    const year = d.getFullYear();
+    const firstDay = d.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const grid = document.createElement("div");
+    grid.className = "calendar-grid";
+
+    for (let i = 0; i < firstDay; i++) {
+      grid.appendChild(document.createElement("div"));
     }
 
-    document.getElementById("streak").innerText =
-      `🏆 best streak: ${best}`;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement("div");
+      cell.className = "calendar-day";
+
+      const dateStr = formatDate(new Date(year, month, day));
+      cell.innerText = day;
+
+      if (dateStr === TODAY) cell.classList.add("today");
+
+      cell.onclick = () => {
+        currentDate = dateStr;
+        dateEl.innerText = dateStr;
+        calendarEl.classList.add("hidden");
+        load(currentDate);
+      };
+
+      grid.appendChild(cell);
+    }
+
+    calendarEl.appendChild(grid);
   }
 
-  /* ---------- EXPORT ---------- */
-  function getAllData() {
-    return db.prepare(`
-      SELECT d.date, t.name, d.done
-      FROM daily_tasks d
-      JOIN tasks t ON t.id=d.task_id
-    `).all();
-  }
-
-  document.getElementById("exportCsv").onclick = () => {
-    const rows = getAllData();
-    if (!rows.length) return alert("No data yet");
-
-    let csv = "date,task,done\n";
-    rows.forEach(r => csv += `${r.date},"${r.name}",${r.done}\n`);
-
-    const file = path.join(EXPORT_DIR, "todo-data.csv");
-    fs.writeFileSync(file, csv);
-    exec(`start "" "${file}"`);
+  /* ---------- interactions ---------- */
+  dateEl.onclick = () => {
+    calendarEl.classList.toggle("hidden");
+    renderCalendar(currentDate);
   };
 
-  document.getElementById("exportJson").onclick = () => {
-    const file = path.join(EXPORT_DIR, "todo-data.json");
-    fs.writeFileSync(file, JSON.stringify(getAllData(), null, 2));
-    exec(`notepad "${file}"`);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") currentDate = addDays(currentDate, -1);
+    if (e.key === "ArrowRight") currentDate = addDays(currentDate, 1);
+
+    dateEl.innerText = currentDate;
+    calendarEl.classList.add("hidden");
+    load(currentDate);
+  });
+
+  /* ---------- manual export (still works) ---------- */
+  exportJsonBtn.onclick = async () => {
+    const tasks = await window.api.getTasks(currentDate);
+    await window.api.exportJson({ date: currentDate, tasks });
   };
 
-  loadTasks();
+  exportCsvBtn.onclick = async () => {
+    const tasks = await window.api.getTasks(currentDate);
+    await window.api.exportCsv({ date: currentDate, tasks });
+  };
+
+  /* ---------- init ---------- */
+  load(TODAY);
+  renderStats();
+  renderStreaks();
 });
