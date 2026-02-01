@@ -23,10 +23,10 @@ This widget follows a different philosophy:
 
 ## 🧠 Core Philosophy
 
-* Discipline > Motivation
-* Visibility > Notifications
-* Data > Feelings
-* Local > Cloud
+* **Discipline > Motivation**
+* **Visibility > Notifications**
+* **Data > Feelings**
+* **Local > Cloud**
 
 This app intentionally avoids complexity so that **using it becomes a habit**, not a chore.
 
@@ -56,8 +56,8 @@ This app intentionally avoids complexity so that **using it becomes a habit**, n
 
 ### 📊 Progress Tracking
 
-* Completion stats
-* Streak tracking
+* Completion statistics
+* Daily streak tracking
 * Historical data preserved
 
 ### 📤 Data Export
@@ -65,6 +65,12 @@ This app intentionally avoids complexity so that **using it becomes a habit**, n
 * Export to **CSV** (Excel-friendly)
 * Export to **JSON**
 * Use your data for analysis, charts, or personal review
+
+Exported files are stored at:
+
+```
+Documents/TodoWidgetData/
+```
 
 ---
 
@@ -91,12 +97,6 @@ This app intentionally avoids complexity so that **using it becomes a habit**, n
 * Click **Export CSV** to analyze in Excel
 * Click **Export JSON** for custom processing
 
-Exported files are stored at:
-
-```
-Documents/TodoWidgetData/
-```
-
 ---
 
 ## 📈 Why This Is Important
@@ -112,8 +112,7 @@ No hiding behind overdue lists.
 
 ### Encourages Honest Reflection
 
-Missed days are not punished.
-They are simply recorded.
+Missed days are not punished. They are simply recorded.
 
 This removes emotional friction and increases long-term consistency.
 
@@ -121,7 +120,7 @@ This removes emotional friction and increases long-term consistency.
 
 Because data is stored cleanly:
 
-* You can analyze weekly consistency
+* Analyze weekly consistency
 * Measure streaks
 * Visualize improvement over months
 
@@ -135,15 +134,15 @@ This turns habits into **measurable behavior**.
 
 **tasks**
 
-* Defines the routine
-* Rarely changes
+* Defines the daily routine
+* Changes rarely
 
 **daily_tasks**
 
 * Stores task completion per date
 * One row per task per day
 
-There is no magic automation.
+There is no automation or magic.
 If a task is not checked, it is not recorded.
 
 ---
@@ -170,25 +169,13 @@ npm start
 todo-widget/
 ├── main.js        # Electron main process
 ├── script.js      # App logic
-├── db.js          # SQLite setup
+├── db-main.js     # SQLite setup
 ├── index.html     # UI markup
 ├── style.css      # Styling
+├── preload.js
 ├── package.json
 └── todo.db        # Auto-created (ignored by Git)
 ```
-
----
-
-## 🚫 What This App Intentionally Does NOT Do
-
-* ❌ No cloud sync
-* ❌ No accounts or authentication
-* ❌ No notifications
-* ❌ No task prioritization
-* ❌ No reminders
-* ❌ No AI-generated motivation
-
-Simplicity is a feature.
 
 ---
 
@@ -206,6 +193,19 @@ dist/
 
 > The `dist` folder is intentionally excluded from Git.
 > Executables are shared via GitHub Releases.
+
+---
+
+## 🚫 What This App Intentionally Does NOT Do
+
+* ❌ No cloud sync
+* ❌ No accounts or authentication
+* ❌ No notifications
+* ❌ No task prioritization
+* ❌ No reminders
+* ❌ No AI-generated motivation
+
+Simplicity is a feature.
 
 ---
 
